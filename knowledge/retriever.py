@@ -36,22 +36,23 @@ def retrieve(query: str, biz_id: str, top_k: int = 3) -> list[dict]:
         List of dicts: [{"id": "...", "text": "...", "category": "...", "score": 0.92}, ...]
     """
     index = _get_index()
-    namespace = f"biz_{biz_id}"
+    namespace = biz_id if biz_id.startswith("biz_") else f"biz_{biz_id}"
 
-    results = index.search(
+    results = index.search_records(
         namespace=namespace,
         query={"inputs": {"text": query}, "top_k": top_k},
+        fields=["text", "category", "vertical", "business_id"],
     )
 
     chunks = []
-    for match in results.get("result", {}).get("hits", []):
-        fields = match.get("fields", {})
+    for hit in results.get("result", {}).get("hits", []):
+        fields = hit.get("fields", {})
         chunks.append({
-            "id": match.get("_id", ""),
+            "id": hit.get("_id", ""),
             "text": fields.get("text", ""),
             "category": fields.get("category", ""),
             "vertical": fields.get("vertical", ""),
-            "score": match.get("_score", 0.0),
+            "score": hit.get("_score", 0.0),
         })
 
     return chunks

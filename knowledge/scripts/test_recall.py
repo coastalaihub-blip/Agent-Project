@@ -48,6 +48,6 @@ def test_recall(biz_id: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--biz_id", default="biz_demo")
+    parser.add_argument("--biz_id", default="biz_biz_demo")
     args = parser.parse_args()
     test_recall(args.biz_id)

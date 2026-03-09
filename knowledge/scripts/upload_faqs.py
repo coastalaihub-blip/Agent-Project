@@ -22,7 +22,7 @@ FAQS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "faqs")
 def upload_faqs(vertical: str, biz_id: str):
     pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
     index = pc.Index(INDEX_NAME)
-    namespace = f"biz_{biz_id}"
+    namespace = biz_id if biz_id.startswith("biz_") else f"biz_{biz_id}"
 
     faq_file = os.path.join(FAQS_DIR, f"{vertical}_faqs.json")
     if not os.path.exists(faq_file):
