@@ -1,0 +1,182 @@
+[
+  {
+    "question": "What are your clinic hours?",
+    "answer": "Bright Smile Dental Clinic is open Monday to Saturday, 9am to 6pm. We are closed on Sundays and public holidays.",
+    "category": "hours",
+    "type": "faq"
+  },
+  {
+    "question": "Are you open on Sundays?",
+    "answer": "We are closed on Sundays. Our working hours are Monday to Saturday, 9am to 6pm.",
+    "category": "hours",
+    "type": "faq"
+  },
+  {
+    "question": "What time do you open?",
+    "answer": "We open at 9am from Monday to Saturday.",
+    "category": "hours",
+    "type": "faq"
+  },
+  {
+    "question": "What time do you close?",
+    "answer": "We close at 6pm. Last appointments are typically scheduled by 5:30pm.",
+    "category": "hours",
+    "type": "faq"
+  },
+  {
+    "question": "How do I book an appointment?",
+    "answer": "I can book an appointment for you right now. Please share your preferred date, time, and the doctor you'd like to see.",
+    "category": "appointments",
+    "type": "faq"
+  },
+  {
+    "question": "Can I book an appointment for today?",
+    "answer": "Same-day appointments depend on availability. Let me check — what time works for you, and which doctor would you like to see?",
+    "category": "appointments",
+    "type": "faq"
+  },
+  {
+    "question": "Can I book an appointment for tomorrow?",
+    "answer": "Yes, I can book for tomorrow. What time works for you — morning or afternoon?",
+    "category": "appointments",
+    "type": "faq"
+  },
+  {
+    "question": "What doctors are available?",
+    "answer": "We have Dr. Sharma (General Dentistry) and Dr. Patel (Orthodontics) at our clinic.",
+    "category": "doctors",
+    "type": "faq"
+  },
+  {
+    "question": "Who is the best doctor for a toothache?",
+    "answer": "For a toothache, Dr. Sharma handles general dental issues including pain and extractions. Would you like to book with Dr. Sharma?",
+    "category": "doctors",
+    "type": "faq"
+  },
+  {
+    "question": "Do you have a dentist for children?",
+    "answer": "Yes, Dr. Sharma sees patients of all ages including children. We recommend booking a morning slot for younger patients.",
+    "category": "doctors",
+    "type": "faq"
+  },
+  {
+    "question": "What services do you offer?",
+    "answer": "We offer general dentistry, teeth cleaning, fillings, extractions, root canal treatment, orthodontics (braces), and teeth whitening.",
+    "category": "services",
+    "type": "faq"
+  },
+  {
+    "question": "Do you do teeth whitening?",
+    "answer": "Yes, we offer professional teeth whitening. A session typically takes about an hour. Would you like to book an appointment?",
+    "category": "services",
+    "type": "faq"
+  },
+  {
+    "question": "Do you do braces or orthodontic treatment?",
+    "answer": "Yes, Dr. Patel specialises in orthodontics including metal braces, clear aligners, and retainers. You can book a consultation with Dr. Patel.",
+    "category": "services",
+    "type": "faq"
+  },
+  {
+    "question": "Do you do root canals?",
+    "answer": "Yes, we perform root canal treatment. It typically requires 2–3 visits. Please book an initial consultation so the doctor can assess your case.",
+    "category": "services",
+    "type": "faq"
+  },
+  {
+    "question": "Where are you located?",
+    "answer": "We are located at 14th Cross, Indiranagar, Bangalore — near the 100 Feet Road junction. Parking is available.",
+    "category": "location",
+    "type": "faq"
+  },
+  {
+    "question": "How do I get to the clinic?",
+    "answer": "We're at 14th Cross, Indiranagar, Bangalore. From the 100 Feet Road metro station, we're a 5-minute walk. You can also find us on Google Maps as Bright Smile Dental Clinic.",
+    "category": "location",
+    "type": "faq"
+  },
+  {
+    "question": "Is there parking available?",
+    "answer": "Yes, we have free parking for up to 10 vehicles in our building compound.",
+    "category": "location",
+    "type": "faq"
+  },
+  {
+    "question": "Do you accept insurance?",
+    "answer": "We accept most major health insurance plans including Star Health, Bajaj Allianz, and HDFC Ergo. Please carry your insurance card when you visit.",
+    "category": "insurance",
+    "type": "faq"
+  },
+  {
+    "question": "Do you accept Bajaj Allianz insurance?",
+    "answer": "Yes, we are a network provider for Bajaj Allianz dental insurance. Please bring your insurance card and a photo ID.",
+    "category": "insurance",
+    "type": "faq"
+  },
+  {
+    "question": "What is the consultation fee?",
+    "answer": "Our consultation fee is ₹500 for a first visit. Follow-up consultations within 30 days are ₹200.",
+    "category": "fees",
+    "type": "faq"
+  },
+  {
+    "question": "How much does a teeth cleaning cost?",
+    "answer": "Professional teeth cleaning (scaling and polishing) costs ₹1,200. It takes about 45 minutes.",
+    "category": "fees",
+    "type": "faq"
+  },
+  {
+    "question": "How much does a root canal cost?",
+    "answer": "Root canal treatment starts at ₹4,500 and varies depending on the tooth and complexity. Dr. Sharma will give you a detailed quote after the first examination.",
+    "category": "fees",
+    "type": "faq"
+  },
+  {
+    "question": "Can I cancel or reschedule my appointment?",
+    "answer": "Yes, you can cancel or reschedule up to 2 hours before your appointment. Please call us or we can reschedule right now.",
+    "category": "appointments",
+    "type": "faq"
+  },
+  {
+    "question": "How long does an appointment take?",
+    "answer": "A consultation is typically 30 minutes. Procedures like cleanings take 45–60 minutes. We'll give you a time estimate when you book.",
+    "category": "appointments",
+    "type": "faq"
+  },
+  {
+    "question": "Do you have emergency dental services?",
+    "answer": "Yes, we accommodate dental emergencies during working hours. For severe pain, broken teeth, or swelling — please come in as soon as possible. We'll fit you in.",
+    "category": "emergency",
+    "type": "faq"
+  },
+  {
+    "question": "I have a severe toothache, what should I do?",
+    "answer": "Please come in as soon as possible — we will see you on priority. Are you able to come in today?",
+    "category": "emergency",
+    "type": "faq"
+  },
+  {
+    "question": "Do you do home visits?",
+    "answer": "We don't offer home visits currently. For patients who cannot travel, please call and we'll discuss the best option.",
+    "category": "services",
+    "type": "faq"
+  },
+  {
+    "question": "What payment methods do you accept?",
+    "answer": "We accept cash, all UPI apps (GPay, PhonePe, Paytm), debit and credit cards, and health insurance.",
+    "category": "fees",
+    "type": "faq"
+  },
+  {
+    "question": "Do you send appointment reminders?",
+    "answer": "Yes, we send an SMS reminder one day before your appointment. Please make sure we have your correct phone number.",
+    "category": "appointments",
+    "type": "faq"
+  },
+  {
+    "question": "What should I bring to my first appointment?",
+    "answer": "Please bring a valid photo ID, your insurance card if applicable, and any previous dental X-rays or treatment records if you have them.",
+    "category": "appointments",
+    "type": "faq"
+  }
+]
