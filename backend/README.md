@@ -2,15 +2,30 @@
 
 FastAPI backend: Supabase auth, business CRUD, call logs, webhook receiver, number assignment.
 
-## Setup
+## Quick Start (Day 1)
 
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
+
+# Create & activate virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1  # Windows
+# source venv/bin/activate    # Mac/Linux
+
+# Install dependencies
 pip install -r requirements.txt
-cp ../.env.example ../.env   # fill in secrets
-uvicorn main:app --reload
+
+# Configure environment
+cp ../.env.example ../.env   # then fill in your API keys
+
+# Start server
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Test it
+python test_backend.py
 ```
+
+📖 **Detailed Setup Guide:** See [DAY1_SETUP_GUIDE.md](../DAY1_SETUP_GUIDE.md)
 
 ## Endpoints
 
