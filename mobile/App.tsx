@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -17,6 +18,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
+// Configure foreground notification behaviour
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -75,9 +87,10 @@ type Call = {
   summary?: string | null;
 };
 
-type Session = { apiBaseUrl: string; business: Business };
+type Session = { apiBaseUrl: string; business: Business; pushToken?: string };
 
 // ─── Onboarding questions ───────────────────────────────────────────────────────
+// Options with textInput:true open a text field instead of immediately advancing
 const QUESTIONS = [
   {
     key: 'vertical' as const,
@@ -86,7 +99,7 @@ const QUESTIONS = [
       { label: 'Dental / Medical Clinic',         value: 'clinic' },
       { label: 'General Clinic / Health Centre',  value: 'clinic' },
       { label: 'Business Helpline / Call Centre', value: 'call_center' },
-      { label: 'Other',                           value: 'restaurant' },
+      { label: 'Other — type your business type', value: '__custom__', textInput: true },
     ],
   },
   {
@@ -97,6 +110,7 @@ const QUESTIONS = [
       { label: '8 am – 8 pm  (Mon–Sat)', value: '8am-8pm' },
       { label: '10 am – 5 pm (Mon–Fri)', value: '10am-5pm' },
       { label: '24 / 7',                 value: '24/7' },
+      { label: 'Custom — type your hours', value: '__custom__', textInput: true },
     ],
   },
   {
@@ -129,6 +143,32 @@ const QUESTIONS = [
     ],
   },
 ];
+
+// ─── Push notification helper ─────────────────────────────────────────────────
+async function registerForPushNotifications(): Promise<string | null> {
+  try {
+    if (Platform.OS === 'web') return null;
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return null;
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('escalations', {
+        name: 'Escalation Alerts',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#0CD9C2',
+      });
+    }
+    return tokenData.data;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function fmtDate(iso: string) {
@@ -352,6 +392,9 @@ export default function App() {
   const [draftUrl, setDraftUrl]     = useState('http://127.0.0.1:8000');
   const [bizName, setBizName]       = useState('');
   const [qIndex, setQIndex]         = useState(0);
+  const [customInput, setCustomInput] = useState('');   // for Q1 Other / Q2 Custom
+  const [showCustom, setShowCustom]   = useState(false); // toggle text input panel
+  const [pushToken, setPushToken]   = useState<string | null>(null);
   const [answers, setAnswers]       = useState<OnboardingAnswers>({
     vertical: '', business_hours: '', appointment_mode: '',
     fallback_action: '', primary_call_reason: '',
@@ -370,9 +413,12 @@ export default function App() {
   // Progress bar animation
   const progressAnim = useRef(new Animated.Value(1 / QUESTIONS.length)).current;
 
-  // ── Session restore ──────────────────────────────────────────────────────────
+  // ── Session restore + push registration ─────────────────────────────────────
   useEffect(() => {
     const restore = async () => {
+      // Register push notifications in parallel
+      const token = await registerForPushNotifications();
+      if (token) setPushToken(token);
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
@@ -429,10 +475,13 @@ export default function App() {
     });
   }
 
-  function answerQuestion(value: string) {
+  function answerQuestion(value: string, customText?: string) {
+    const finalValue = (value === '__custom__' && customText?.trim()) ? customText.trim() : value;
     const q = QUESTIONS[qIndex];
-    const nextAnswers = { ...answers, [q.key]: value };
+    const nextAnswers = { ...answers, [q.key]: finalValue };
     setAnswers(nextAnswers);
+    setShowCustom(false);
+    setCustomInput('');
     const nextIndex = qIndex + 1;
     const nextProgress = Math.min(nextIndex + 1, QUESTIONS.length) / QUESTIONS.length;
     Animated.timing(progressAnim, {
@@ -446,6 +495,8 @@ export default function App() {
   }
 
   function goBackFromQuestion() {
+    setShowCustom(false);
+    setCustomInput('');
     if (qIndex > 0) {
       const prevProgress = qIndex / QUESTIONS.length;
       Animated.timing(progressAnim, {
@@ -470,13 +521,13 @@ export default function App() {
           owner_id: `owner-${Date.now()}`,
           name: defaultName(answers, bizName),
           vertical: answers.vertical || 'clinic',
-          onboarding_config: answers,
+          onboarding_config: { ...answers, push_token: pushToken ?? undefined },
         }),
       });
       if (!res.ok) throw new Error(await res.text());
       const created = await res.json() as Business;
       setBusiness(created);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ apiBaseUrl: apiUrl, business: created } satisfies Session));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ apiBaseUrl: apiUrl, business: created, pushToken: pushToken ?? undefined } satisfies Session));
       await loadData(created, apiUrl);
       setScreen('success');
     } catch (e) { setError((e as Error).message); }
@@ -487,7 +538,7 @@ export default function App() {
     await AsyncStorage.removeItem(STORAGE_KEY);
     setBusiness(null); setCalls([]); setStats(null); setQIndex(0);
     setAnswers({ vertical: '', business_hours: '', appointment_mode: '', fallback_action: '', primary_call_reason: '' });
-    setBizName(''); setError(null); setTab('home');
+    setBizName(''); setError(null); setTab('home'); setShowCustom(false); setCustomInput('');
     progressAnim.setValue(1 / QUESTIONS.length);
     setScreen('welcome');
   }
@@ -617,13 +668,54 @@ export default function App() {
 
             {/* Sliding question pane */}
             <Animated.View style={{ flex: 1, transform: [{ translateX: slideX }], opacity: qOpacity }}>
-              <ScrollView contentContainerStyle={styles.qBody} showsVerticalScrollIndicator={false}>
+              <ScrollView contentContainerStyle={styles.qBody} showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled">
                 <Text style={styles.qText}>{q.q}</Text>
-                <View style={{ gap: 14 }}>
-                  {q.options.map(opt => (
-                    <OptionBtn key={opt.value + qIndex} label={opt.label} onSelect={() => answerQuestion(opt.value)} />
-                  ))}
-                </View>
+
+                {/* Custom text input panel (shown when textInput option is tapped) */}
+                {showCustom && (
+                  <View style={styles.customInputPanel}>
+                    <TextInput
+                      style={styles.customTextInput}
+                      value={customInput}
+                      onChangeText={setCustomInput}
+                      autoFocus
+                      placeholder="Type your answer here…"
+                      placeholderTextColor={C.textDim}
+                      returnKeyType="done"
+                    />
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                      <TouchableOpacity onPress={() => { setShowCustom(false); setCustomInput(''); }}
+                        style={[styles.customBtn, { borderColor: C.border }]}>
+                        <Text style={{ color: C.textSub, fontSize: 14 }}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => customInput.trim() && answerQuestion('__custom__', customInput)}
+                        style={[styles.customBtn, { borderColor: C.teal, flex: 1 }]}>
+                        <Text style={{ color: C.teal, fontSize: 14, fontWeight: '700' }}>Confirm →</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {!showCustom && (
+                  <View style={{ gap: 14 }}>
+                    {q.options.map(opt => (
+                      <OptionBtn
+                        key={opt.value + qIndex}
+                        label={opt.label}
+                        onSelect={() => {
+                          if ((opt as any).textInput) {
+                            setShowCustom(true);
+                            setCustomInput('');
+                          } else {
+                            answerQuestion(opt.value);
+                          }
+                        }}
+                      />
+                    ))}
+                  </View>
+                )}
               </ScrollView>
             </Animated.View>
           </View>
@@ -999,5 +1091,10 @@ const styles = StyleSheet.create({
 
   resetBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 16, borderWidth: 1, borderColor: C.orange + '44', marginTop: 8 },
   resetBtnText: { color: C.orange, fontSize: 15, fontWeight: '600' },
+
+  // Custom text input panel (Q1 Other / Q2 Custom)
+  customInputPanel: { backgroundColor: C.surface, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.borderMid, marginBottom: 16 },
+  customTextInput:  { color: C.text, fontSize: 16, padding: 4, borderBottomWidth: 1, borderBottomColor: C.borderMid, paddingBottom: 10 },
+  customBtn:        { alignItems: 'center' as const, paddingVertical: 14, borderRadius: 14, borderWidth: 1, flex: 0 },
 });
 
