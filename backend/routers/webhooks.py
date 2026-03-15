@@ -12,8 +12,8 @@ Flow:
 import os
 import uuid
 import httpx
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import Response
+from fastapi import APIRouter, Query, Request, HTTPException
+from fastapi.responses import JSONResponse, Response
 from db.supabase import get_supabase
 from models.schemas import ExotelWebhookPayload
 
@@ -88,6 +88,25 @@ async def exotel_webhook(request: Request):
         )
 
     return Response(content=_exoml_ok(), media_type="application/xml")
+
+
+@router.get("/exotel/passthru")
+async def exotel_passthru(
+    CallSid: str = Query(...),
+    From: str = Query(""),
+    To: str = Query(""),
+):
+    """
+    Passthru Applet callback — Exotel calls this after the Voicebot Applet closes.
+    Reads escalation state saved by voicebot_ws.py and returns it as JSON.
+    Exotel SwitchCase Applet reads the 'escalate' field to branch the flow.
+    """
+    from routers.voicebot_ws import _call_states
+
+    state = _call_states.pop(CallSid, None)
+    if state and state.get("escalate"):
+        return JSONResponse({"escalate": "true", "from": From})
+    return JSONResponse({"escalate": "false"})
 
 
 @router.post("/ozonetel")

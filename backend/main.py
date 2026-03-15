@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from routers import businesses, calls, webhooks
+from routers.voicebot_ws import router as voicebot_router
 
 load_dotenv()
 
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
 app.include_router(calls.router, prefix="/api/calls", tags=["calls"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+app.include_router(voicebot_router, tags=["voicebot"])
 
 
 @app.get("/health")
