@@ -388,8 +388,8 @@ function InputBlock({ label, icon, value, onChange, placeholder, type }: {
 export default function App() {
   const [screen, setScreen]         = useState<Screen>('loading');
   const [tab, setTab]               = useState<Tab>('home');
-  const [apiUrl, setApiUrl]         = useState('http://127.0.0.1:8000');
-  const [draftUrl, setDraftUrl]     = useState('http://127.0.0.1:8000');
+  const [apiUrl, setApiUrl]         = useState('http://10.151.25.122:8000');
+  const [draftUrl, setDraftUrl]     = useState('http://10.151.25.122:8000');
   const [bizName, setBizName]       = useState('');
   const [qIndex, setQIndex]         = useState(0);
   const [customInput, setCustomInput] = useState('');   // for Q1 Other / Q2 Custom
@@ -618,7 +618,7 @@ export default function App() {
               <BackBtn onPress={() => setScreen('welcome')} />
               <Text style={styles.screenTitle}>Set up your{'\n'}workspace</Text>
               <Text style={styles.screenSub}>
-                On a physical phone, replace 127.0.0.1 with your laptop's LAN IP address so Expo Go can reach the backend.
+                Backend URL is pre-filled with your LAN IP. Change it only if your machine's IP has changed.
               </Text>
 
               <InputBlock label="Backend URL" icon="server-outline" value={draftUrl}
@@ -629,7 +629,7 @@ export default function App() {
 
               <View style={{ marginTop: 8 }}>
                 <CtaBtn label="Start onboarding" onPress={() => {
-                  setApiUrl(draftUrl.trim() || 'http://127.0.0.1:8000');
+                  setApiUrl(draftUrl.trim() || 'http://10.151.25.122:8000');
                   setQIndex(0);
                   progressAnim.setValue(1 / QUESTIONS.length);
                   setScreen('questions');
@@ -702,7 +702,7 @@ export default function App() {
                   <View style={{ gap: 14 }}>
                     {q.options.map(opt => (
                       <OptionBtn
-                        key={opt.value + qIndex}
+                        key={opt.label + qIndex}
                         label={opt.label}
                         onSelect={() => {
                           if ((opt as any).textInput) {
