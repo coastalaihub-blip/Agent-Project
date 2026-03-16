@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Optional
 from db.supabase import get_supabase
 from models.schemas import BusinessSignup, BusinessResponse
 import uuid
@@ -72,3 +74,65 @@ async def list_businesses(owner_id: str):
     db = get_supabase()
     result = db.table("businesses").select("*").eq("owner_id", owner_id).execute()
     return result.data or []
+
+
+# ── Agent Config ──────────────────────────────────────────────────────────────
+
+class AgentConfig(BaseModel):
+    system_prompt: Optional[str] = None
+    voice_id: Optional[str] = None          # ElevenLabs voice ID
+    escalation_phrases: Optional[list] = None
+    business_hours: Optional[str] = None
+
+
+@router.get("/{business_id}/config")
+async def get_config(business_id: str):
+    db = get_supabase()
+    result = db.table("businesses").select("onboarding_config").eq("id", business_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Business not found")
+    return result.data.get("onboarding_config", {})
+
+
+@router.put("/{business_id}/config")
+async def update_config(business_id: str, payload: AgentConfig):
+    db = get_supabase()
+    biz = db.table("businesses").select("onboarding_config").eq("id", business_id).single().execute()
+    if not biz.data:
+        raise HTTPException(status_code=404, detail="Business not found")
+    existing = biz.data.get("onboarding_config") or {}
+    updated = {**existing, **{k: v for k, v in payload.model_dump().items() if v is not None}}
+    result = db.table("businesses").update({"onboarding_config": updated}).eq("id", business_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+    return updated
+
+
+# ── Business Hours ────────────────────────────────────────────────────────────
+
+class BusinessHours(BaseModel):
+    hours: dict  # e.g. {"monday": {"open": "09:00", "close": "18:00"}, ...}
+
+
+@router.get("/{business_id}/hours")
+async def get_hours(business_id: str):
+    db = get_supabase()
+    result = db.table("businesses").select("onboarding_config").eq("id", business_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Business not found")
+    config = result.data.get("onboarding_config") or {}
+    return config.get("hours", {})
+
+
+@router.put("/{business_id}/hours")
+async def update_hours(business_id: str, payload: BusinessHours):
+    db = get_supabase()
+    biz = db.table("businesses").select("onboarding_config").eq("id", business_id).single().execute()
+    if not biz.data:
+        raise HTTPException(status_code=404, detail="Business not found")
+    existing = biz.data.get("onboarding_config") or {}
+    existing["hours"] = payload.hours
+    result = db.table("businesses").update({"onboarding_config": existing}).eq("id", business_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to update hours")
+    return payload.hours

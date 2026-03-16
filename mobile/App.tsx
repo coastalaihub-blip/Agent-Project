@@ -56,7 +56,7 @@ const STORAGE_KEY = 'coastal-ai-session-v2';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Screen = 'loading' | 'welcome' | 'setup' | 'questions' | 'review' | 'success' | 'app';
-type Tab    = 'home' | 'calls' | 'settings';
+type Tab    = 'home' | 'calls' | 'calendar' | 'chat' | 'settings';
 
 type OnboardingAnswers = {
   vertical: string;
@@ -76,6 +76,22 @@ type Business = {
 };
 
 type Stats = { total_calls: number; escalated: number; appointments_booked: number };
+
+type Appointment = {
+  id: string;
+  patient_name: string;
+  phone: string;
+  appointment_datetime: string;
+  notes?: string | null;
+};
+
+type AgentInstruction = {
+  id: string;
+  instruction: string;
+  created_by: string;
+  is_active: boolean;
+  created_at: string;
+};
 
 type Call = {
   id: string;
@@ -311,10 +327,26 @@ function CallCard({ call, index }: { call: Call; index: number }) {
 function TabBtn({ icon, iconActive, label, active, onPress }: {
   icon: any; iconActive: any; label: string; active: boolean; onPress: () => void;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  function handlePress() {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.88, duration: 80, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }),
+    ]).start();
+    onPress();
+  }
   return (
-    <TouchableOpacity onPress={onPress} style={styles.tabBtn} activeOpacity={0.7}>
-      <Ionicons name={active ? iconActive : icon} size={22} color={active ? C.teal : C.textDim} />
-      <Text style={[styles.tabLabel, { color: active ? C.teal : C.textDim }]}>{label}</Text>
+    <TouchableOpacity onPress={handlePress} style={styles.tabBtn} activeOpacity={1}>
+      <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
+        {/* Active indicator pill */}
+        {active && (
+          <View style={styles.tabActivePill} />
+        )}
+        <View style={[styles.tabIconWrap, active && styles.tabIconWrapActive]}>
+          <Ionicons name={active ? iconActive : icon} size={20} color={active ? C.teal : C.textDim} />
+        </View>
+        <Text style={[styles.tabLabel, { color: active ? C.teal : C.textDim, fontWeight: active ? '700' : '500' }]}>{label}</Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -402,6 +434,10 @@ export default function App() {
   const [business, setBusiness]     = useState<Business | null>(null);
   const [stats, setStats]           = useState<Stats | null>(null);
   const [calls, setCalls]           = useState<Call[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [instructions, setInstructions] = useState<AgentInstruction[]>([]);
+  const [instrText, setInstrText]       = useState('');
+  const [instrSending, setInstrSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState<string | null>(null);
@@ -439,13 +475,17 @@ export default function App() {
   // ── Data loading ─────────────────────────────────────────────────────────────
   async function loadData(b: Business, url: string) {
     const base = url.replace(/\/$/, '');
-    const [sRes, cRes] = await Promise.all([
+    const [sRes, cRes, aRes, iRes] = await Promise.all([
       fetch(`${base}/api/calls/${b.id}/stats`),
       fetch(`${base}/api/calls/${b.id}`),
+      fetch(`${base}/api/appointments/${b.id}`),
+      fetch(`${base}/api/agent/instructions/${b.id}`),
     ]);
     if (!sRes.ok || !cRes.ok) throw new Error('Failed to load dashboard data.');
     setStats(await sRes.json());
     setCalls(await cRes.json());
+    if (aRes.ok) setAppointments(await aRes.json());
+    if (iRes.ok) setInstructions(await iRes.json());
   }
 
   async function refresh() {
@@ -537,6 +577,7 @@ export default function App() {
   async function resetApp() {
     await AsyncStorage.removeItem(STORAGE_KEY);
     setBusiness(null); setCalls([]); setStats(null); setQIndex(0);
+    setAppointments([]); setInstructions([]); setInstrText('');
     setAnswers({ vertical: '', business_hours: '', appointment_mode: '', fallback_action: '', primary_call_reason: '' });
     setBizName(''); setError(null); setTab('home'); setShowCustom(false); setCustomInput('');
     progressAnim.setValue(1 / QUESTIONS.length);
@@ -814,14 +855,40 @@ export default function App() {
 
             {/* ─── Tab row ─────────────────────────────────── */}
             <View style={styles.tabRow}>
-              <TabBtn icon="home-outline"     iconActive="home"       label="Dashboard" active={tab === 'home'}     onPress={() => setTab('home')} />
-              <TabBtn icon="call-outline"     iconActive="call"       label="Calls"     active={tab === 'calls'}    onPress={() => setTab('calls')} />
-              <TabBtn icon="settings-outline" iconActive="settings"   label="Settings"  active={tab === 'settings'} onPress={() => setTab('settings')} />
+              <TabBtn icon="home-outline"     iconActive="home"         label="Home"     active={tab === 'home'}     onPress={() => setTab('home')} />
+              <TabBtn icon="call-outline"     iconActive="call"         label="Calls"    active={tab === 'calls'}    onPress={() => setTab('calls')} />
+              <TabBtn icon="calendar-outline" iconActive="calendar"     label="Calendar" active={tab === 'calendar'} onPress={() => setTab('calendar')} />
+              <TabBtn icon="chatbubble-outline" iconActive="chatbubble" label="Agent"    active={tab === 'chat'}     onPress={() => setTab('chat')} />
+              <TabBtn icon="settings-outline" iconActive="settings"     label="Settings" active={tab === 'settings'} onPress={() => setTab('settings')} />
             </View>
 
             {/* ─── Home tab ────────────────────────────────── */}
             {tab === 'home' && (
               <FadeSlide key="home">
+                {/* Hero card */}
+                <LinearGradient
+                  colors={['#0E2435', '#0E1929', '#1a0e35']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.homeHero}
+                >
+                  <LinearGradient colors={C.tealGrad} style={styles.homeHeroAccent} />
+                  <View style={styles.homeHeroRow}>
+                    <View style={styles.homeHeroLeft}>
+                      <View style={styles.homeHeroStatusRow}>
+                        <PulseDot />
+                        <Text style={styles.homeHeroStatus}>Agent is Live</Text>
+                      </View>
+                      <Text style={styles.homeHeroBiz}>{business.name}</Text>
+                      <Text style={styles.homeHeroSub}>AI Receptionist · 24/7</Text>
+                    </View>
+                    <View style={styles.homeHeroRight}>
+                      <Text style={styles.homeHeroCount}>{stats?.total_calls ?? '—'}</Text>
+                      <Text style={styles.homeHeroCountLabel}>calls today</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+
                 <View style={styles.metricsRow}>
                   <MetricCard icon="call"         label="Calls"        value={stats?.total_calls        ?? 0} color={C.teal}   delay={0} />
                   <MetricCard icon="calendar"     label="Appointments" value={stats?.appointments_booked ?? 0} color={C.green}  delay={80} />
@@ -855,6 +922,113 @@ export default function App() {
                   ) : (
                     calls.map((c, i) => <CallCard key={c.id} call={c} index={i} />)
                   )}
+                </View>
+              </FadeSlide>
+            )}
+
+            {/* ─── Calendar tab ────────────────────────────── */}
+            {tab === 'calendar' && (
+              <FadeSlide key="calendar">
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+                  {appointments.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="calendar-outline" size={40} color={C.textDim} />
+                      <Text style={styles.emptyText}>No appointments booked yet. They'll appear here once callers book through the AI.</Text>
+                    </View>
+                  ) : (
+                    appointments.map((a, i) => {
+                      const dt = new Date(a.appointment_datetime);
+                      return (
+                        <View key={a.id} style={[styles.callCard, i < appointments.length - 1 && { marginBottom: 12 }]}>
+                          <View style={styles.callRowTop}>
+                            <View style={styles.callLeft}>
+                              <View style={[styles.callIconWrap, { backgroundColor: C.greenDim }]}>
+                                <Ionicons name="calendar" size={14} color={C.green} />
+                              </View>
+                              <Text style={styles.callNumber}>{a.patient_name}</Text>
+                            </View>
+                            <View style={[styles.badge, { backgroundColor: C.greenDim }]}>
+                              <Text style={[styles.badgeText, { color: C.green }]}>
+                                {dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.callMeta}>
+                            {dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {a.phone ? `  ·  ${a.phone}` : ''}
+                          </Text>
+                          {a.notes ? <Text style={styles.callSummary}>{a.notes}</Text> : null}
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </FadeSlide>
+            )}
+
+            {/* ─── Agent Chat tab ───────────────────────────── */}
+            {tab === 'chat' && (
+              <FadeSlide key="chat">
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Agent Instructions</Text>
+                  <Text style={styles.emptyText}>Send runtime instructions to the AI — these are read at the start of each call.</Text>
+
+                  {/* Instruction history */}
+                  <View style={{ marginTop: 16, marginBottom: 16 }}>
+                    {instructions.length === 0 && (
+                      <Text style={[styles.emptyText, { textAlign: 'left', marginTop: 8 }]}>
+                        No active instructions. Send one below.
+                      </Text>
+                    )}
+                    {[...instructions].reverse().map(inst => (
+                      <View key={inst.id} style={[
+                        styles.instrBubble,
+                        inst.created_by === 'owner' ? styles.instrBubbleOwner : styles.instrBubbleAgent,
+                      ]}>
+                        <Text style={styles.instrText}>{inst.instruction}</Text>
+                        <Text style={styles.instrMeta}>
+                          {inst.created_by} · {new Date(inst.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Input */}
+                  <View style={styles.instrInputRow}>
+                    <TextInput
+                      style={styles.instrInput}
+                      value={instrText}
+                      onChangeText={setInstrText}
+                      placeholder="E.g. Dr. Sharma on leave today…"
+                      placeholderTextColor={C.textDim}
+                      multiline
+                    />
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: C.border, paddingTop: 8 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        disabled={instrSending || !instrText.trim()}
+                        onPress={async () => {
+                          if (!instrText.trim() || instrSending || !business) return;
+                          setInstrSending(true);
+                          try {
+                            const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/agent/instruct`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ business_id: business.id, instruction: instrText.trim() }),
+                            });
+                            if (!res.ok) throw new Error('Failed');
+                            setInstrText('');
+                            await loadData(business, apiUrl);
+                          } catch { setError('Failed to send instruction'); }
+                          finally { setInstrSending(false); }
+                        }}
+                        style={[styles.instrSendBtn, (!instrText.trim() || instrSending) && { opacity: 0.4 }]}
+                      >
+                        <Ionicons name="send" size={16} color={C.bg} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               </FadeSlide>
             )}
@@ -1062,15 +1236,30 @@ const styles = StyleSheet.create({
   numberHeroValue:  { color: C.teal, fontSize: 30, fontWeight: '800', letterSpacing: 2.5, marginBottom: 8 },
   numberHeroSub:    { color: C.textDim, fontSize: 13 },
 
-  tabRow:    { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  tabBtn:    { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, gap: 4 },
-  tabLabel:  { fontSize: 11, fontWeight: '700' },
+  tabRow:         { flexDirection: 'row', gap: 6, marginBottom: 24, backgroundColor: C.surface, borderRadius: 22, padding: 6, borderWidth: 1, borderColor: C.border },
+  tabBtn:         { flex: 1, alignItems: 'center', paddingVertical: 6 },
+  tabIconWrap:    { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  tabIconWrapActive: { backgroundColor: C.tealDim },
+  tabActivePill:  { position: 'absolute', top: -6, left: '50%', marginLeft: -10, width: 20, height: 3, borderRadius: 2, backgroundColor: C.teal },
+  tabLabel:       { fontSize: 10, marginTop: 2 },
+
+  homeHero:            { borderRadius: 22, padding: 20, marginBottom: 22, borderWidth: 1, borderColor: 'rgba(12,217,194,0.18)', overflow: 'hidden' },
+  homeHeroAccent:      { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
+  homeHeroRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  homeHeroLeft:        { flex: 1 },
+  homeHeroStatusRow:   { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
+  homeHeroStatus:      { color: '#20D777', fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
+  homeHeroBiz:         { color: '#E6EDFF', fontSize: 18, fontWeight: '800', marginBottom: 3 },
+  homeHeroSub:         { color: '#637491', fontSize: 12 },
+  homeHeroRight:       { alignItems: 'flex-end' },
+  homeHeroCount:       { color: '#0CD9C2', fontSize: 36, fontWeight: '800', lineHeight: 40 },
+  homeHeroCountLabel:  { color: '#637491', fontSize: 11, marginTop: 2 },
 
   metricsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  metricCard: { flex: 1, backgroundColor: C.surface, borderRadius: 18, padding: 14, borderWidth: 1, borderColor: C.border },
-  metricIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  metricValue:{ fontSize: 26, fontWeight: '800', marginBottom: 4 },
-  metricLabel:{ color: C.textSub, fontSize: 11, lineHeight: 16 },
+  metricCard: { flex: 1, backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+  metricIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  metricValue:{ fontSize: 28, fontWeight: '800', marginBottom: 3, letterSpacing: -0.5 },
+  metricLabel:{ color: C.textSub, fontSize: 11, lineHeight: 16, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   section:      { marginBottom: 24 },
   sectionTitle: { color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 18 },
@@ -1096,5 +1285,15 @@ const styles = StyleSheet.create({
   customInputPanel: { backgroundColor: C.surface, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: C.borderMid, marginBottom: 16 },
   customTextInput:  { color: C.text, fontSize: 16, padding: 4, borderBottomWidth: 1, borderBottomColor: C.borderMid, paddingBottom: 10 },
   customBtn:        { alignItems: 'center' as const, paddingVertical: 14, borderRadius: 14, borderWidth: 1, flex: 0 },
+
+  // agent chat
+  instrBubble:      { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 10, maxWidth: '90%' },
+  instrBubbleOwner: { backgroundColor: C.tealDim, alignSelf: 'flex-end', borderWidth: 1, borderColor: 'rgba(12,217,194,0.2)' },
+  instrBubbleAgent: { backgroundColor: C.surface2, alignSelf: 'flex-start', borderWidth: 1, borderColor: C.border },
+  instrText:        { color: C.text, fontSize: 14, lineHeight: 21 },
+  instrMeta:        { color: C.textSub, fontSize: 10, marginTop: 5, opacity: 0.7 },
+  instrInputRow:    { backgroundColor: C.surface2, borderRadius: 18, borderWidth: 1, borderColor: C.borderMid, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 },
+  instrInput:       { color: C.text, fontSize: 14, lineHeight: 21, maxHeight: 110, marginBottom: 8 },
+  instrSendBtn:     { width: 40, height: 40, borderRadius: 12, backgroundColor: C.teal, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
 });
 

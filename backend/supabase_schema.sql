@@ -142,3 +142,24 @@ INSERT INTO phone_number_pool (phone_number, provider, vertical, area_code) VALU
     ('+918045002001', 'exotel', 'call_center', '080'),
     ('+918245002001', 'exotel', 'call_center', '0824')
 ON CONFLICT (phone_number) DO NOTHING;
+
+-- ─── Agent Instructions ─────────────────────────────────────
+-- New table for runtime instructions sent via dashboard/mobile
+CREATE TABLE IF NOT EXISTS agent_instructions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  business_id uuid REFERENCES businesses(id) ON DELETE CASCADE,
+  instruction text NOT NULL,
+  created_by text DEFAULT 'owner',   -- 'owner' | 'agent'
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS agent_instructions_business_id_idx
+  ON agent_instructions(business_id);
+
+ALTER TABLE agent_instructions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "owners_own_instructions" ON agent_instructions
+  FOR ALL USING (
+    business_id IN (SELECT id FROM businesses WHERE owner_id = auth.uid())
+  );

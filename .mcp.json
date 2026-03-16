@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_YOUR_GITHUB_PAT"
+      }
+    },
+    "figma": {
+      "command": "npx",
+      "args": ["-y", "figma-developer-mcp", "--figma-api-key", "REPLACE_WITH_YOUR_FIGMA_KEY", "--stdio"]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--supabase-url", "REPLACE_WITH_YOUR_SUPABASE_URL",
+        "--supabase-key", "REPLACE_WITH_YOUR_SERVICE_ROLE_KEY"
+      ]
+    }
+  }
+}

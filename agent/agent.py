@@ -17,6 +17,7 @@ from prompts.call_center import CALL_CENTER_SYSTEM_PROMPT
 load_dotenv()
 
 KNOWLEDGE_SERVICE_URL = os.getenv("KNOWLEDGE_SERVICE_URL", "http://localhost:8003")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Per-call session memory: call_sid → ConversationBufferMemory
 _session_memories: dict[str, ConversationBufferMemory] = {}
@@ -58,6 +59,21 @@ def _get_system_prompt(vertical: str, biz_name: str, biz_config: dict) -> str:
         )
 
 
+async def fetch_agent_instructions(biz_id: str) -> str:
+    """Fetch active runtime instructions set by the business owner."""
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{API_BASE_URL}/api/agent/instructions/{biz_id}")
+            resp.raise_for_status()
+            instructions = resp.json()
+            if instructions:
+                lines = "\n".join(f"- {i['instruction']}" for i in instructions)
+                return f"\n\n## Owner Instructions (follow these for this session)\n{lines}"
+    except Exception as e:
+        print(f"[agent] Failed to fetch agent instructions: {e}")
+    return ""
+
+
 async def retrieve_context(query: str, biz_id: str) -> str:
     """Call Nandana's knowledge service to get relevant FAQ chunks."""
     try:
@@ -96,13 +112,20 @@ async def run_agent(
     # Retrieve relevant context from Pinecone
     context = await retrieve_context(text, biz_id)
 
+    # Fetch owner runtime instructions (only on first turn of session)
+    owner_instructions = ""
+    memory = get_session_memory(call_sid)
+    if not memory.chat_memory.messages:
+        owner_instructions = await fetch_agent_instructions(biz_id)
+
     # Build system prompt
     system_prompt = _get_system_prompt(vertical, biz_name, biz_config)
+    if owner_instructions:
+        system_prompt += owner_instructions
     if context:
         system_prompt += f"\n\n## Relevant Information\n{context}"
 
-    # Get or create session memory
-    memory = get_session_memory(call_sid)
+    # Get session memory (already fetched above for first-turn check)
     history = memory.chat_memory.messages
 
     # Build messages
