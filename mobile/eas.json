@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 13.3.0"
+    "version": ">= 13.3.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "preview": {
@@ -14,15 +15,6 @@
       "autoIncrement": true,
       "ios": {
         "simulator": false
-      }
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
       }
     }
   }
