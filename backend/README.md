@@ -40,6 +40,8 @@ python test_backend.py
 | POST | `/api/appointments/{business_id}` | Create appointment |
 | POST | `/api/agent/instruct` | Add runtime instruction |
 | GET | `/api/agent/instructions/{business_id}` | List active instructions |
+| POST | `/agent-query` | Handoff passthrough to agent service |
+| POST | `/tts-request` | Handoff passthrough to voice service |
 | POST | `/webhooks/exotel` | Incoming call from Exotel |
 | POST | `/webhooks/ozonetel` | Incoming call from Ozonetel |
 

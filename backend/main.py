@@ -6,6 +6,7 @@ from routers import businesses, calls, webhooks
 from routers.voicebot_ws import router as voicebot_router
 from routers.agent_instructions import router as agent_instructions_router
 from routers.appointments import router as appointments_router
+from routers.integrations import router as integrations_router
 
 load_dotenv()
 
@@ -29,6 +30,7 @@ app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 app.include_router(voicebot_router, tags=["voicebot"])
 app.include_router(agent_instructions_router, prefix="/api/agent", tags=["agent"])
 app.include_router(appointments_router, prefix="/api/appointments", tags=["appointments"])
+app.include_router(integrations_router, tags=["integrations"])
 
 
 @app.get("/health")
