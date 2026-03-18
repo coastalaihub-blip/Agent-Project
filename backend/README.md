@@ -33,8 +33,13 @@ python test_backend.py
 |---|---|---|
 | POST | `/api/businesses/signup` | Create business + assign number |
 | GET | `/api/businesses/{id}` | Get business config |
+| PUT | `/api/businesses/{id}/push-token` | Update Expo push token |
 | GET | `/api/calls/{business_id}` | List call logs |
 | GET | `/api/calls/{call_id}/transcript` | Get transcript + summary |
+| GET | `/api/appointments/{business_id}` | List appointments |
+| POST | `/api/appointments/{business_id}` | Create appointment |
+| POST | `/api/agent/instruct` | Add runtime instruction |
+| GET | `/api/agent/instructions/{business_id}` | List active instructions |
 | POST | `/webhooks/exotel` | Incoming call from Exotel |
 | POST | `/webhooks/ozonetel` | Incoming call from Ozonetel |
 
@@ -58,3 +63,30 @@ Exotel webhook → /webhooks/exotel
 - `routers/calls.py` — Call log endpoints
 - `db/supabase.py` — Supabase client
 - `supabase_schema.sql` — Run this in Supabase SQL editor
+
+## Day 2 Verification
+
+```bash
+# 1) Ensure schema is applied (both files may be used depending on env)
+#    - backend/supabase_schema.sql
+#    - backend/supabase_schema_dev.sql
+
+# 2) Run server
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# 3) Run baseline checks
+python test_backend.py
+
+# 4) Validate new endpoints manually
+curl -X POST http://localhost:8000/api/agent/instruct \
+    -H "Content-Type: application/json" \
+    -d '{"business_id":"<biz_id>","instruction":"Prioritize bookings"}'
+
+curl http://localhost:8000/api/agent/instructions/<biz_id>
+
+curl -X POST http://localhost:8000/api/appointments/<biz_id> \
+    -H "Content-Type: application/json" \
+    -d '{"patient_name":"Rahul Verma","phone":"+919999888877","appointment_datetime":"2026-03-19T11:00:00+05:30"}'
+
+curl http://localhost:8000/api/appointments/<biz_id>
+```

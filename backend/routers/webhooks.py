@@ -16,6 +16,7 @@ from fastapi import APIRouter, Query, Request, HTTPException
 from fastapi.responses import JSONResponse, Response
 from db.supabase import get_supabase
 from models.schemas import ExotelWebhookPayload
+from services.push_notifications import send_expo_push
 
 router = APIRouter()
 
@@ -76,6 +77,22 @@ async def exotel_webhook(request: Request):
             "escalated": agent_resp.get("escalate", False),
         }
         db.table("calls").insert(call_log).execute()
+
+        if call_log["escalated"]:
+            onboarding = business.get("onboarding_config") or {}
+            push_token = onboarding.get("push_token")
+            if push_token:
+                await send_expo_push(
+                    expo_push_token=push_token,
+                    title="Escalation: Caller needs assistance",
+                    body=f"{caller or 'Unknown caller'} needs manual follow-up.",
+                    data={
+                        "business_id": biz_id,
+                        "call_id": call_log["id"],
+                        "intent": call_log.get("intent") or "unknown",
+                        "escalated": True,
+                    },
+                )
 
         if agent_resp.get("action") == "book_appointment" and agent_resp.get("action_data"):
             appt_data = dict(agent_resp["action_data"])

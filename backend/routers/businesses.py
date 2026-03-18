@@ -114,6 +114,10 @@ class BusinessHours(BaseModel):
     hours: dict  # e.g. {"monday": {"open": "09:00", "close": "18:00"}, ...}
 
 
+class PushTokenUpdate(BaseModel):
+    push_token: str
+
+
 @router.get("/{business_id}/hours")
 async def get_hours(business_id: str):
     db = get_supabase()
@@ -136,3 +140,19 @@ async def update_hours(business_id: str, payload: BusinessHours):
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to update hours")
     return payload.hours
+
+
+@router.put("/{business_id}/push-token")
+async def update_push_token(business_id: str, payload: PushTokenUpdate):
+    db = get_supabase()
+    biz = db.table("businesses").select("onboarding_config").eq("id", business_id).single().execute()
+    if not biz.data:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    existing = biz.data.get("onboarding_config") or {}
+    existing["push_token"] = payload.push_token
+
+    result = db.table("businesses").update({"onboarding_config": existing}).eq("id", business_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to update push token")
+    return {"ok": True}

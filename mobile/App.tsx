@@ -441,6 +441,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const lastPushSyncKey = useRef('');
 
   // Question slide animation
   const slideX    = useRef(new Animated.Value(0)).current;
@@ -496,6 +497,32 @@ export default function App() {
     catch (e) { setError((e as Error).message); }
     finally { setRefreshing(false); }
   }
+
+  async function syncPushTokenIfNeeded(token: string, b: Business, url: string) {
+    const base = url.replace(/\/$/, '');
+    const syncKey = `${b.id}:${token}:${base}`;
+    if (lastPushSyncKey.current === syncKey) return;
+
+    const res = await fetch(`${base}/api/businesses/${b.id}/push-token`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ push_token: token }),
+    });
+    if (!res.ok) throw new Error('Failed to sync push token');
+    lastPushSyncKey.current = syncKey;
+  }
+
+  useEffect(() => {
+    const sync = async () => {
+      if (!pushToken || !business) return;
+      try {
+        await syncPushTokenIfNeeded(pushToken, business, apiUrl);
+      } catch {
+        // Token sync is best-effort; app functionality should not break.
+      }
+    };
+    void sync();
+  }, [pushToken, business, apiUrl]);
 
   // ── Question slide transition ─────────────────────────────────────────────────
   function slideQuestion(direction: 'forward' | 'back', then: () => void) {
