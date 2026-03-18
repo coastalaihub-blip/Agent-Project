@@ -116,5 +116,18 @@ INSERT INTO phone_number_pool (phone_number, provider, vertical, area_code) VALU
     ('+918245002001', 'exotel', 'call_center', '0824')
 ON CONFLICT (phone_number) DO NOTHING;
 
+-- ─── Agent Instructions ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS agent_instructions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    instruction TEXT NOT NULL,
+    created_by TEXT DEFAULT 'owner',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_instructions_business_id
+    ON agent_instructions(business_id);
+
 -- ⚠️ Note: This is for Day 1 testing only
 -- For production, use the full schema with auth.users foreign keys

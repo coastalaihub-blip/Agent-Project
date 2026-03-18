@@ -38,7 +38,8 @@ class AppointmentCreate(BaseModel):
     business_id: str
     patient_name: str
     phone: str
-    datetime: str
+    appointment_datetime: Optional[str] = None
+    datetime: Optional[str] = None
     created_from_call_id: Optional[str]
 
 

@@ -78,7 +78,10 @@ async def exotel_webhook(request: Request):
         db.table("calls").insert(call_log).execute()
 
         if agent_resp.get("action") == "book_appointment" and agent_resp.get("action_data"):
-            appt = {**agent_resp["action_data"], "business_id": biz_id, "created_from_call_id": call_log["id"]}
+            appt_data = dict(agent_resp["action_data"])
+            if "appointment_datetime" in appt_data and "datetime" not in appt_data:
+                appt_data["datetime"] = appt_data.pop("appointment_datetime")
+            appt = {**appt_data, "business_id": biz_id, "created_from_call_id": call_log["id"]}
             db.table("appointments").insert(appt).execute()
 
         audio_url = await _text_to_speech(agent_resp["text"], vertical)
