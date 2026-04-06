@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS phone_number_pool (
 -- ─── Businesses ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS businesses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    owner_id UUID NOT NULL REFERENCES auth.users(id),
+    owner_id TEXT NOT NULL,
     name TEXT NOT NULL,
     vertical TEXT NOT NULL CHECK (vertical IN ('clinic', 'call_center', 'restaurant')),
     phone_number TEXT UNIQUE NOT NULL,

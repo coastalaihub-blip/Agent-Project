@@ -31,6 +31,8 @@ class CallLog(BaseModel):
     summary: Optional[str]
     intent: Optional[str]
     escalated: bool
+    escalation_reason: Optional[str] = None
+    agent_response: Optional[str] = None
     timestamp: datetime
 
 

@@ -103,7 +103,11 @@ type Call = {
   summary?: string | null;
 };
 
-type Session = { apiBaseUrl: string; business: Business; pushToken?: string };
+type Session = { apiBaseUrl: string; business: Business; pushToken?: string; ownerId: string };
+
+function createOwnerId() {
+  return `owner_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 // ─── Onboarding questions ───────────────────────────────────────────────────────
 // Options with textInput:true open a text field instead of immediately advancing
@@ -423,6 +427,7 @@ export default function App() {
   const [apiUrl, setApiUrl]         = useState('http://10.151.25.122:8000');
   const [draftUrl, setDraftUrl]     = useState('http://10.151.25.122:8000');
   const [bizName, setBizName]       = useState('');
+  const [ownerId, setOwnerId]       = useState('');
   const [qIndex, setQIndex]         = useState(0);
   const [customInput, setCustomInput] = useState('');   // for Q1 Other / Q2 Custom
   const [showCustom, setShowCustom]   = useState(false); // toggle text input panel
@@ -463,6 +468,7 @@ export default function App() {
           setApiUrl(s.apiBaseUrl);
           setDraftUrl(s.apiBaseUrl);
           setBusiness(s.business);
+          setOwnerId(s.ownerId);
           await loadData(s.business, s.apiBaseUrl);
           setScreen('app');
           return;
@@ -581,11 +587,13 @@ export default function App() {
     setSubmitting(true);
     setError(null);
     try {
+      const nextOwnerId = ownerId || createOwnerId();
+      setOwnerId(nextOwnerId);
       const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/businesses/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          owner_id: `owner-${Date.now()}`,
+          owner_id: nextOwnerId,
           name: defaultName(answers, bizName),
           vertical: answers.vertical || 'clinic',
           onboarding_config: { ...answers, push_token: pushToken ?? undefined },
@@ -594,7 +602,7 @@ export default function App() {
       if (!res.ok) throw new Error(await res.text());
       const created = await res.json() as Business;
       setBusiness(created);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ apiBaseUrl: apiUrl, business: created, pushToken: pushToken ?? undefined } satisfies Session));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ apiBaseUrl: apiUrl, business: created, pushToken: pushToken ?? undefined, ownerId: nextOwnerId } satisfies Session));
       await loadData(created, apiUrl);
       setScreen('success');
     } catch (e) { setError((e as Error).message); }
@@ -605,6 +613,7 @@ export default function App() {
     await AsyncStorage.removeItem(STORAGE_KEY);
     setBusiness(null); setCalls([]); setStats(null); setQIndex(0);
     setAppointments([]); setInstructions([]); setInstrText('');
+    setOwnerId('');
     setAnswers({ vertical: '', business_hours: '', appointment_mode: '', fallback_action: '', primary_call_reason: '' });
     setBizName(''); setError(null); setTab('home'); setShowCustom(false); setCustomInput('');
     progressAnim.setValue(1 / QUESTIONS.length);

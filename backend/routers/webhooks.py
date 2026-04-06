@@ -52,18 +52,38 @@ async def exotel_webhook(request: Request):
     if status == "ringing":
         # Answer and play greeting
         greeting = f"Thank you for calling {biz_name}. How can I help you today?"
-        audio_url = await _text_to_speech(greeting, vertical)
-        return Response(
-            content=_exoml_play_and_record(audio_url),
-            media_type="application/xml",
-        )
+        try:
+            audio_url = await _text_to_speech(greeting, vertical)
+            return Response(
+                content=_exoml_play_and_record(audio_url),
+                media_type="application/xml",
+            )
+        except Exception as exc:
+            print(f"[webhooks] Greeting TTS failed for {call_sid}: {exc}")
+            return Response(content=_exoml_ok(), media_type="application/xml")
 
     if status == "completed" and payload.get("RecordingUrl"):
         # Transcribe → agent → TTS → log
         recording_url = payload["RecordingUrl"]
-        transcript = await _transcribe(recording_url)
+        try:
+            transcript = await _transcribe(recording_url)
+        except Exception as exc:
+            transcript = ""
+            print(f"[webhooks] Deepgram transcription failed for {call_sid}: {exc}")
 
-        agent_resp = await _call_agent(transcript, biz_id, vertical, call_sid)
+        try:
+            agent_resp = await _call_agent(transcript, biz_id, vertical, call_sid)
+        except Exception as exc:
+            print(f"[webhooks] Agent service failed for {call_sid}: {exc}")
+            agent_resp = {
+                "text": "Sorry, I could not process that request right now. Please call back later.",
+                "intent": "unknown",
+                "action": None,
+                "action_data": None,
+                "escalate": True,
+                "summary": "Agent service unavailable",
+                "escalation_reason": "upstream_agent_failure",
+            }
 
         # Log to Supabase
         call_log = {
@@ -75,6 +95,8 @@ async def exotel_webhook(request: Request):
             "summary": agent_resp.get("summary", ""),
             "intent": agent_resp.get("intent", ""),
             "escalated": agent_resp.get("escalate", False),
+            "escalation_reason": agent_resp.get("escalation_reason", "") if agent_resp.get("escalate") else "",
+            "agent_response": agent_resp.get("text", ""),
         }
         db.table("calls").insert(call_log).execute()
 
@@ -101,11 +123,15 @@ async def exotel_webhook(request: Request):
             appt = {**appt_data, "business_id": biz_id, "created_from_call_id": call_log["id"]}
             db.table("appointments").insert(appt).execute()
 
-        audio_url = await _text_to_speech(agent_resp["text"], vertical)
-        return Response(
-            content=_exoml_play(audio_url),
-            media_type="application/xml",
-        )
+        try:
+            audio_url = await _text_to_speech(agent_resp["text"], vertical)
+            return Response(
+                content=_exoml_play(audio_url),
+                media_type="application/xml",
+            )
+        except Exception as exc:
+            print(f"[webhooks] TTS generation failed for {call_sid}: {exc}")
+            return Response(content=_exoml_ok(), media_type="application/xml")
 
     return Response(content=_exoml_ok(), media_type="application/xml")
 

@@ -57,7 +57,10 @@ async def signup_business(payload: BusinessSignup):
     result = db.table("businesses").insert(new_business).execute()
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create business")
-    return result.data[0]
+
+    business = result.data[0]
+    db.table("phone_number_pool").update({"assigned_to": business["id"]}).eq("phone_number", phone_number).execute()
+    return business
 
 
 @router.get("/{business_id}", response_model=BusinessResponse)
@@ -142,6 +145,7 @@ async def update_hours(business_id: str, payload: BusinessHours):
     return payload.hours
 
 
+@router.post("/{business_id}/push-token")
 @router.put("/{business_id}/push-token")
 async def update_push_token(business_id: str, payload: PushTokenUpdate):
     db = get_supabase()
